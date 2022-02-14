@@ -1,9 +1,11 @@
-import { useState, useEffect, useContext } from 'react';
+import { useEffect, useContext } from 'react';
 import styled from '@emotion/styled/macro';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { ThemeContext } from './themeContext';
 import Checkbox from './Checkbox';
-import api from './api';
+import useStores from './useStores';
+import { toJS } from 'mobx';
+import { observer } from 'mobx-react-lite';
 
 const BackButton = styled.a`
   display: inline-block;
@@ -37,30 +39,26 @@ const ToDoItemPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const params = useParams();
-
-  const [todo, setTodo] = useState(location.state.todo);
-  const itemId = parseInt(params.itemId);
+  const todoId = parseInt(params.itemId);
+  const { todoStore } = useStores();
+  const todo = todoStore.todoById(todoId);
 
   useEffect(() => {
-    const fetchTodo = async () => {
-      const remoteTodo = await api.readItem(itemId);
-      setTodo(remoteTodo);
-    };
-    fetchTodo();
+    if (todo) {
+      navigate(location.pathname, {
+        replace: true,
+        state: { todo: toJS(todo) },
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params]);
+  }, [todo]);
 
   const handleChange = async (e) => {
-    const newState = e.currentTarget.checked;
-
-    await api.updateItem(itemId, { isCompleted: newState });
-    const newTodo = { ...todo, isCompleted: newState };
-    navigate(location.pathname, { replace: true, state: { todo: newTodo } });
-    setTodo(newTodo);
+    todoStore.patchTodo(todoId, e.currentTarget.checked);
   };
 
   const handleDelete = async () => {
-    await api.deleteItem(itemId);
+    await todoStore.deleteTodo(todoId);
     navigate('/');
   };
 
@@ -86,4 +84,4 @@ const ToDoItemPage = () => {
   );
 };
 
-export default ToDoItemPage;
+export default observer(ToDoItemPage);

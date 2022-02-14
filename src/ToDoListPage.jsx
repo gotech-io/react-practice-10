@@ -1,18 +1,18 @@
-import { useState } from 'react';
 import FetchToDoList from './FetchToDoList';
 import CompletedToggle from './CompletedToggle';
+import useStores from './useStores';
 
 const ToDoListPage = () => {
-  const [showCompleted, setShowCompleted] = useState(true);
+  const { filterStore } = useStores();
 
   return (
     <>
       <CompletedToggle
         text="Show Completed"
-        initialState={showCompleted}
-        onChange={setShowCompleted}
+        initialState={filterStore.showCompleted}
+        onChange={(checked) => filterStore.showCompletedChanged(checked)}
       />
-      <FetchToDoList showCompleted={showCompleted} />
+      <FetchToDoList showCompleted={filterStore.showCompleted} />
     </>
   );
 };

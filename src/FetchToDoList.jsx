@@ -1,85 +1,26 @@
-import { useReducer, useEffect } from 'react';
 import ToDoList from './ToDoList';
 import ToDoInput from './ToDoInput';
-import api from './api';
+import useStores from './useStores';
+import { toJS } from 'mobx';
+import { observer } from 'mobx-react-lite';
 
-const createStateObject = (todos, showCompleted) => {
-  return {
-    todos: todos,
-    filteredTodos: showCompleted
-      ? todos
-      : todos.filter((todo) => !todo.isCompleted),
-    showCompleted: showCompleted,
-    nextId: Math.max(...todos.map((todo) => todo.id)) + 1,
-  };
-};
-
-const reducer = (state, action) => {
-  switch (action.type) {
-    case 'todos-loaded':
-      return createStateObject(action.payload.todos, state.showCompleted);
-    case 'todo-added':
-      return createStateObject(
-        [...state.todos, action.payload.newTodo],
-        state.showCompleted
-      );
-    case 'todo-updated':
-      const newTodos = state.todos.map((todo) => {
-        if (todo.id === action.payload.id) {
-          return { ...todo, ...action.payload };
-        }
-        return todo;
-      });
-      return createStateObject(newTodos, state.showCompleted);
-    case 'filter-changed':
-      return createStateObject(state.todos, action.payload.showCompleted);
-    default:
-      throw new Error(`Unknown action type ${action.type}`);
-  }
-};
-
-const FetchToDoList = ({ showCompleted }) => {
-  const [{ filteredTodos, nextId }, dispatch] = useReducer(reducer, {
-    todos: [],
-    filteredTodos: [],
-    showCompleted,
-    nextId: 0,
-  });
-
-  useEffect(() => {
-    const fetchTodos = async () => {
-      const remoteTodos = await api.readItems();
-      dispatch({ type: 'todos-loaded', payload: { todos: remoteTodos } });
-    };
-    fetchTodos();
-  }, []);
-
-  useEffect(() => {
-    dispatch({ type: 'filter-changed', payload: { showCompleted } });
-  }, [showCompleted]);
+const FetchToDoList = () => {
+  const { todoStore } = useStores();
 
   const handleChange = async (id, changes) => {
-    await api.updateItem(id, changes);
-    dispatch({ type: 'todo-updated', payload: { id, ...changes } });
+    todoStore.patchTodo(id, changes);
   };
 
   const handleAdd = async (title) => {
-    const newTodo = {
-      id: nextId,
-      title,
-      isCompleted: false,
-    };
-
-    await api.createItem(newTodo);
-    dispatch({ type: 'todo-added', payload: { newTodo } });
+    todoStore.postNewTodo(title);
   };
 
   return (
     <>
-      <ToDoList todos={filteredTodos} onChange={handleChange} />
+      <ToDoList todos={toJS(todoStore.filteredTodos)} onChange={handleChange} />
       <ToDoInput onAdd={handleAdd} />
     </>
   );
 };
 
-export default FetchToDoList;
+export default observer(FetchToDoList);
